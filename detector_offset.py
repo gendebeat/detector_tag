@@ -36,7 +36,7 @@ print(f"Duración: {total_frames/fps:.2f} segundos")
 # Crear detector
 detector = Detector(families="tag36h11")
 
-frame_count = 0
+
 detection_count = 0
 start_time = datetime.now()
 
@@ -53,19 +53,56 @@ for tag in markers:
 
 
 
-# Parámetros de la cámara (debes calibrar tu cámara)
-camera_matrix = np.array([
-    [800, 0, 320],
-    [0, 800, 240],
-    [0, 0, 1]
-], dtype=np.float32)
-dist_coeffs = np.zeros(4)  # Sin distorsión
+def load_calibration(filename="camera_calibration.yaml"):
+        """Carga los parámetros de calibración desde un archivo"""
+        fs = cv2.FileStorage(filename, cv2.FILE_STORAGE_READ)
+        
+        if not fs.isOpened():
+            print(f"Error: No se puede abrir el archivo {filename}")
+            return False
+        
+        cam = fs.getNode("camera_matrix").mat()
+        dist = fs.getNode("distortion_coefficients").mat()
+        fs.release()
+        
+        
+        print(f"Calibración cargada desde: {filename}")
+        return True, cam, dist
+
+def test_calibration():
+        """Prueba la calibración en tiempo real"""
+        
+        
+        print("Probando calibración. Presiona 'q' para salir")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Corregir distorsión
+            undistorted = cv2.undistort(frame, camera_matrix, dist_coeffs)
+            
+            # Mostrar imágenes original y corregida
+            combined = np.hstack((frame, undistorted))
+            cv2.putText(combined, "Original (Izquierda) vs Corregida (Derecha)", 
+                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            
+            cv2.imshow('Prueba de Calibracion', combined)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        cv2.destroyAllWindows()
+
+
+camera_calibrated, camera_matrix, dist_coeffs = load_calibration()
+test_calibration = test_calibration()
 
 
 while True:
 
     ret, frame = cap.read()
-    frame_count += 1
 
     if ret:
    
@@ -74,14 +111,19 @@ while True:
         # Detectar AprilTags
         results = detector.detect(gray)
 
+        #dibujar centro del frame
+        frame_center = (int(width/2), int(height/2))
+        cv2.circle(frame, frame_center, 5, (255, 255, 0), -1)
+
+
         # Procesar resultados
         for detection in results:
             print(f"Tag ID: {detection.tag_id}")
             print(f"Centro: {detection.center}")
             print(f"Esquinas: {detection.corners}")
 
-            for tag in markers:
 
+            for tag in markers:
 
                 if (detection.tag_id==tag['id']):
 
@@ -125,6 +167,7 @@ while True:
                                     (corners[0][0], corners[0][1] - 10),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, colour_id[tag['id']], 2)
 
+                     
 
                         # Proyectar ejes 3D
                         axis_length = tag['size']/2
