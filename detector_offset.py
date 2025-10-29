@@ -13,6 +13,10 @@ from pupil_apriltags import Detector
 # video_path = 'video.mp4'
 video_path = '/dev/video0'
 cap = cv2.VideoCapture(video_path)
+
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+cap.set(cv2.CAP_PROP_FPS, 30)
     
 # Obtener propiedades del video
 fps = cap.get(cv2.CAP_PROP_FPS)
