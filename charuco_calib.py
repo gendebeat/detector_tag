@@ -4,7 +4,7 @@ import glob
 import os
 
 class CharucoCalibrator:
-    def __init__(self, squaresX=7, squaresY=5, squareLength=0.04, markerLength=0.02, dictionary_size=50):
+    def __init__(self, squaresX=10, squaresY=5, squareLength=0.04, markerLength=0.04, dictionary_size=100):
         """
         Inicializa el calibrador ChArUco
         
@@ -21,7 +21,7 @@ class CharucoCalibrator:
         self.markerLength = markerLength
         
         # Crear diccionario y tablero ChArUco
-        self.dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+        self.dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_100)
         self.board = cv2.aruco.CharucoBoard(
             (squaresX, squaresY), 
             squareLength, 
@@ -57,14 +57,19 @@ class CharucoCalibrator:
         cap = cv2.VideoCapture(camera_id)
         
         # Configurar resolución (opcional)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)     
+        cap.set(cv2.CAP_PROP_FPS, 30)       
         
         print("Presiona 's' para capturar imagen, 'q' para salir")
         print(f"Objetivo: {num_images} imágenes")
         
         image_count = 0
         saved_count = 0
+
+        all_charuco_corners = []
+        all_charuco_ids = []
+        image_size = None
         
         while saved_count < num_images:
             ret, frame = cap.read()
@@ -75,13 +80,39 @@ class CharucoCalibrator:
             # Mostrar frame
             display_frame = frame.copy()
             cv2.putText(display_frame, f"Imagenes capturadas: {saved_count}/{num_images}", 
-                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             cv2.putText(display_frame, "Presiona 's' para capturar, 'q' para salir", 
-                       (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                       (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 255, 0), 2)
             
+            
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            if image_size is None:
+                image_size = gray.shape[::-1]  # (width, height)
+            
+            # Detectar marcadores
+            corners, ids, rejected = cv2.aruco.detectMarkers(gray, self.dictionary)
+            
+            if len(corners) > 0:
+                # Interpolar esquinas de ChArUco
+                ret, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
+                    corners, ids, gray, self.board
+                )
+                
+                if ret > 0:
+                    all_charuco_corners.append(charuco_corners)
+                    all_charuco_ids.append(charuco_ids)
+                    
+                    # Visualizar detección (opcional)
+
+                    cv2.aruco.drawDetectedMarkers(display_frame, corners, ids)
+                    if charuco_corners is not None:
+                        cv2.aruco.drawDetectedCornersCharuco(display_frame, charuco_corners, charuco_ids)
+                    
+
             cv2.imshow('Calibracion - Captura de Imagenes', display_frame)
-            
             key = cv2.waitKey(1) & 0xFF
+
             if key == ord('s'):
                 # Guardar imagen
                 filename = os.path.join(output_dir, f"calib_{saved_count:03d}.jpg")
@@ -89,10 +120,12 @@ class CharucoCalibrator:
                 saved_count += 1
                 print(f"Imagen guardada: {filename}")
                 
+                
                 # Mostrar confirmación
                 cv2.putText(display_frame, "IMAGEN GUARDADA!", 
                            (frame.shape[1]//2 - 150, frame.shape[0]//2), 
                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                
                 cv2.imshow('Calibracion - Captura de Imagenes', display_frame)
                 cv2.waitKey(500)
                 
@@ -234,6 +267,10 @@ class CharucoCalibrator:
             return
         
         cap = cv2.VideoCapture(camera_id)
+        # Configurar resolución (opcional)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)     
+        cap.set(cv2.CAP_PROP_FPS, 30)  
         
         print("Probando calibración. Presiona 'q' para salir")
         
@@ -262,10 +299,10 @@ def main():
     """Función principal para ejecutar la calibración completa"""
     # Crear calibrador
     calibrator = CharucoCalibrator(
-        squaresX=7,
-        squaresY=5,
-        squareLength=0.04,  # 4 cm
-        markerLength=0.02   # 2 cm
+        squaresX=11,
+        squaresY=11,
+        squareLength=0.095,  # 4 cm
+        markerLength=0.075   # 2 cm
     )
     
     while True:
