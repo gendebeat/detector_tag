@@ -1,0 +1,28 @@
+{
+	"markers": [
+		{
+			"id": 0,
+			"size": 0.160,
+			"offsetX": 0.05,
+            "offsetY": -0.1
+		},
+		{
+			"id": 1,
+			"size": 0.1,
+			"offsetX": 0.09,
+			"offsetY": 0.04
+		},
+		{
+			"id": 2,
+			"size": 0.05,
+			"offsetX": -0.02,
+			"offsetY": 0.06
+		},
+		{
+			"id": 3,
+			"size": 0.025,
+			"offsetX": 0.0,
+			"offsetY": 0.0
+		}
+	]
+}

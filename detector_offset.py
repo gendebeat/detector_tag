@@ -7,6 +7,8 @@ import time
 
 import random
 
+import json
+
 
 from pupil_apriltags import Detector
 
@@ -34,18 +36,18 @@ frame_count = 0
 detection_count = 0
 start_time = datetime.now()
 
-# Definir tags id dimensions e offsets (id,tamaño,x,y)
-offsets = [
-    (0, 0.160, 0.05, -0.1),        
-    (1, 0.1, 0.09, 0.04),       
-    (2, 0.05, -0.02, 0.06),      
-    (3, 0.025, 0, 0),       
-]
+
+with open('config_tag.json', 'r', encoding='utf-8') as file:
+    datos = json.load(file)
+
+# Acceder a los datos
+markers = datos['markers']
 
 colour_id = {}  # Make sure this dictionary is defined
+for tag in markers:
+    colour_id[tag['id']] = (random.randrange(0, 256), random.randrange(0, 256), random.randrange(0, 256))
 
-for i, (tag_id, a, b, c) in enumerate(offsets):
-    colour_id[tag_id] = (random.randrange(0, 256), random.randrange(0, 256), random.randrange(0, 256))
+
 
 # Parámetros de la cámara (debes calibrar tu cámara)
 camera_matrix = np.array([
@@ -74,25 +76,24 @@ while True:
             print(f"Centro: {detection.center}")
             print(f"Esquinas: {detection.corners}")
 
-            # Dibujar todos los puntos de offset
-            for i,(tag_id,tag_size,offset_x, offset_y) in enumerate(offsets):
+            for tag in markers:
 
-            
-                if (detection.tag_id==tag_id):
+
+                if (detection.tag_id==tag['id']):
 
                     # Dibujar el contorno del tag
                     corners = detection.corners.astype(int)
-                    cv2.polylines(frame, [corners], True, colour_id[tag_id], 2)
+                    cv2.polylines(frame, [corners], True, colour_id[tag['id']], 2)
 
                     # Dibujar el centro 
                     center = tuple(detection.center.astype(int))
 
                     # Puntos 3D del tag en coordenadas del mundo
                     object_points = np.array([
-                        [-tag_size/2, -tag_size/2, 0],
-                        [ tag_size/2, -tag_size/2, 0],
-                        [ tag_size/2,  tag_size/2, 0],
-                        [-tag_size/2,  tag_size/2, 0]
+                        [-tag['size']/2, -tag['size']/2, 0],
+                        [ tag['size']/2, -tag['size']/2, 0],
+                        [ tag['size']/2,  tag['size']/2, 0],
+                        [-tag['size']/2,  tag['size']/2, 0]
                     ], dtype=np.float32)
 
                     # Resolver PnP para obtener pose
@@ -118,17 +119,17 @@ while True:
                         # Mostrar ID
                         cv2.putText(frame, f"ID: {detection.tag_id}", 
                                     (corners[0][0], corners[0][1] - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, colour_id[tag_id], 2)
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, colour_id[tag['id']], 2)
 
 
                         # Proyectar ejes 3D
-                        axis_length = tag_size/2
+                        axis_length = tag['size']/2
                         axis_points = np.float32([
                             [0, 0, 0],
                             [axis_length, 0, 0],
                             [0, axis_length, 0],
                             [0, 0, axis_length],
-                            [offset_x,offset_y,0]
+                            [tag['offsetX'], tag['offsetY'], 0]
                         ]).reshape(-1, 3)
 
                         img_points, _ = cv2.projectPoints(
@@ -145,7 +146,7 @@ while True:
                         cv2.arrowedLine(frame, origin, x_axis, (0, 0, 255), 3)
                         cv2.arrowedLine(frame, origin, y_axis, (0, 255, 0), 3)
                         cv2.arrowedLine(frame, origin, z_axis, (255, 0, 0), 3)
-                        cv2.arrowedLine(frame, origin, target_axis, colour_id[tag_id], 3)
+                        cv2.arrowedLine(frame, origin, target_axis, colour_id[tag['id']], 3)
 
 
         cv2.imshow('Video', frame)
